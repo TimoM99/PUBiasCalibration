@@ -5,12 +5,10 @@ Created on Thu Apr 20 20:31:36 2023
 @author: teiss
 """
 import numpy as np
-from utils import sigma
+from src.helper_files.utils import sigmoid
 from sklearn.preprocessing import scale
 
-def generate_artificial_data_discr(prior=0.5,n=2000,p=10,xdistr="norm"):
-
-    
+def generate_artificial_data_discr(prior=0.5,n=2000,p=10,xdistr="norm"): 
     y = np.zeros(n)
     ytest = np.zeros(n)
     for i in np.arange(0,n,1):
@@ -79,9 +77,9 @@ def generate_artificial_data_gen(n=2000,p=10,b=1,xdistr="norm"):
     beta_true = np.zeros(p)
     beta_true[0:5]= b
     eta = np.dot(X,beta_true)
-    prob_true = sigma(eta)
+    prob_true = sigmoid(eta)
     eta_test = np.dot(Xtest,beta_true)
-    prob_true_test = sigma(eta_test)    
+    prob_true_test = sigmoid(eta_test)    
     y = np.zeros(n)
     ytest = np.zeros(n)
     for i in np.arange(0,n,1):

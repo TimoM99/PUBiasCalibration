@@ -4,62 +4,60 @@ Created on Mon Feb  6 08:57:46 2023
 
 @author: teiss
 """
-import os
 import random
-import km
-# os.chdir("C:\\Users\\teiss\\Dropbox\\pu_learn")
+import src.helper_files.km as km
 
-
-from Models.PGlin import PUGerych
-from Models.SAREM import SAREM
-from Models.LBE import LBE
-from Models.basic import PUbasic
-from Models.threshold import PUthreshold
-from Models.PUSB import PUSB
+import src.Models.PUSB as pusb
+from src.Models.PUSB import PUSB
+import src.Models.LBE as lbe
+from src.Models.LBE import LBE
+import src.Models.PGlin as pgl
+from src.Models.PGlin import PUGerych
+import src.Models.basic as basic
+from src.Models.basic import PUbasic
+import src.Models.SAREM as sarem
+from src.Models.SAREM import SAREM
+import src.Models.threshold as threshold
+from src.Models.threshold import PUthreshold
 from artificial import generate_artificial_data_gen
 
 
 import numpy as np
-# from keras.models import Sequential
-# from keras.layers import Dense
-# from scikeras.wrappers import KerasClassifier 
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, auc, roc_curve, precision_recall_curve, precision_score, recall_score
-
-
-# from sarpu.pu_learning import pu_learn_sar_em
-# from lbe.LBE_changed import lbe_train, lbe_predict_proba
-from utils import sigmoid
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, auc, roc_curve, precision_recall_curve
+from src.helper_files.utils import sigmoid
 
 #Set parameters:
-p=10
-n=2000    
-par = 0.1
+p=10 # number of features
+n=2000 # number of samples
 
-label_scheme= 'scar'
-#label_scheme= 'prop1'
-#label_scheme= 'prop2'
 nsym = 20
-classifier = "logistic"
-method_list = ['threshold']
+method_list = ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle']
+label_strats = ['S1', 'S2', 'S3', 'S4']
 
-for label_strat in ['S4']:
+for label_strat in label_strats:
     for xdistr in ['norm','unif','lognorm']:
         print('\n Distribution:', xdistr)
         for method in method_list:
             print('\n Method:', method)
             results = np.zeros((nsym,7))
             for sym in range(nsym):
+
+                # Set the seeds
                 np.random.seed(sym)
                 random.seed(sym)
+                km.seed(sym)
+
+                pusb.seed(sym)
+                lbe.seed(sym)
+                pgl.seed(sym)
+                sarem.seed(sym)
+                threshold.seed(sym)
+                basic.seed(sym)
+                
                 print('|', sep=' ', end='', flush=True) 
                 y, ytest, X,Xtest, prob_true, prob_true_test = generate_artificial_data_gen(n=n,p=p,b=1,xdistr=xdistr)
-                # X, Xtest, y, ytest = train_test_split(Xall, yall, test_size=0.25, random_state=sym)
                 n = X.shape[0]
 
-                # prob_true = LogisticRegression().fit(X, y).predict_proba(X)[:, 1]
-                # prob_true[np.where(prob_true==1)] = 0.999
-                # prob_true[np.where(prob_true==0)] = 0.001
                 # Make PU data set
                 s = np.zeros(n)
                 if label_strat == 'S1':
@@ -97,72 +95,7 @@ for label_strat in ['S4']:
                         est_pi = (1-np.mean(s))*km1[1] +  np.mean(s)
                         model = PUSB(est_pi, Xtest, ytest)
                     model.fit(X, s)
-        
-            
-            
-            # for sym in np.arange(0,nsym,1):
-            
-            #     print('|', sep=' ', end='', flush=True) 
                 
-            #     # Generate artificial data:
-            #     y,ytest,X,Xtest,prob_true,prob_true_test = generate_artificial_data_gen(n=n,p=p,b=1,xdistr=xdistr)
-                
-            #     #Create PU dataset:
-            #     s, ex_true = make_pu_labels(X,y,c=par,prob_true=prob_true,label_scheme=label_scheme,k=par)
-                
-            #     # if classifier=='nn':
-            #     #     def create_network(p):
-            #     #         model = Sequential()
-            #     #         model.add(Dense(12, input_shape=(p,), activation='relu'))
-            #     #         model.add(Dense(8, activation='relu'))
-            #     #         model.add(Dense(1, activation='sigmoid'))
-            #     #         model.compile(loss='binary_crossentropy', optimizer='adam')
-            #     #         return model
-            #     #     clf = KerasClassifier(create_network(p), epochs=100, verbose=0)
-            #     if classifier=='logistic':    
-            #         clf = LogisticRegression();
-            #     else:
-            #         raise Exception('classifier not found!')
-                
-                
-                
-            #     if method=='naive':
-            #         model = PUbasic(clf)
-            #         model.fit(X,s)
-            #         prob_y_test = model.predict_proba(Xtest)[:,1]
-            #     elif method=='oracle':
-            #         model= PUbasic(clf)
-            #         model.fit(X,y)
-            #         prob_y_test = model.predict_proba(Xtest)[:,1]
-            #     elif method=='weighted':
-            #         model = PUweighted(clf,ex=ex_true) 
-            #         model.fit(X,s)
-            #         prob_y_test = model.predict_proba(Xtest)[:,1]
-            #     elif method=='em':
-            #         model, e_model, info = pu_learn_sar_em(X, s, range(X.shape[1]))
-            #         prob_y_test = model.predict_proba(Xtest) 
-            #     elif method=='threshold':
-            #         model = PUthreshold(clf,score_type='mi') 
-            #         model.fit(X,s)
-            #         prob_y_test = model.predict_proba(Xtest)[:,1]            
-            #     elif method=='threshold_weighted':
-            #         model = PUthresholdWeighted(clf) 
-            #         model.fit(X,s)
-            #         prob_y_test = model.predict_proba(Xtest)[:,1]
-            #     elif method=='lbe':
-            #         model=lbe_train(X,s,kind='LR',epochs=250)
-            #         prob_y_test = lbe_predict_proba(model,Xtest)
-            #     else:
-            #         raise Exception('method not found!')
-                
-                # if np.any(np.isnan(prob_y_test)):
-                #     acc=0
-                #     f1 =0
-                #     prec=0
-                #     recall = 0
-                #     roc_auc=0.5
-                #     prec_auc=0
-                # else:
                 prob_y_test = model.predict_proba(Xtest)[:,1]
                 if np.any(np.isnan(prob_y_test)):
                     prob_y_test[np.where(np.isnan(prob_y_test))]= np.mean(s)
@@ -185,7 +118,7 @@ for label_strat in ['S4']:
                 results[sym,5] = pr_auc
                 results[sym,6] = bacc
                 
-                file_out = 'Library/results_artificial/results_method_' + method + '_label_scheme_'+label_strat + '_xdistr_' + xdistr + ".txt"  
+                file_out = 'results_artificial/results_method_' + method + '_label_scheme_' + label_strat + '_xdistr_' + xdistr + ".txt"  
                 np.savetxt(file_out, results)
             
 

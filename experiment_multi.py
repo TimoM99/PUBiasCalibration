@@ -1,28 +1,34 @@
-
 from functools import partial
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 import time
-import km
+import Library.src.helper_files.km as km
 import pandas as pd
 import multiprocessing
 import mkl
 
-from Models.PUSB import PUSB
-from Models.LBE import LBE
-from Models.PGlin import PUGerych
-from utils import make_binary_class, sigmoid 
-from Models.basic import PUbasic
-from Models.SAREM import SAREM
-from Models.threshold import PUthreshold
+import src.Models.PUSB as pusb
+from src.Models.PUSB import PUSB
+import src.Models.LBE as lbe
+from src.Models.LBE import LBE
+import src.Models.PGlin as pgl
+from src.Models.PGlin import PUGerych
+import src.Models.basic as basic
+from src.Models.basic import PUbasic
+import src.Models.SAREM as sarem
+from src.Models.SAREM import SAREM
+import src.Models.threshold as threshold
+from src.Models.threshold import PUthreshold
+from Library.src.helper_files.utils import make_binary_class, sigmoid 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, roc_curve, auc, precision_recall_curve
 import warnings
 
 
+
+
 def experiment_lr(ds, nsym, strat):
     label_strat = strat
-
 
     # Load data:
     df_name = 'data/' + ds + '.csv'
@@ -41,14 +47,23 @@ def experiment_lr(ds, nsym, strat):
         results = np.zeros((nsym, 8))
         
         for sym in np.arange(0, nsym, 1):
+            np.random.seed(sym)
+            km.seed(sym)
+
+            pusb.seed(sym)
+            lbe.seed(sym)
+            pgl.seed(sym)
+            sarem.seed(sym)
+            threshold.seed(sym)
+            basic.seed(sym)
             
             X, Xtest, y, ytest = train_test_split(Xall, yall, test_size=0.25, random_state=sym)
             n = X.shape[0]
 
-            prob_true = LogisticRegression().fit(X, y).predict_proba(X)[:, 1]
+            # Make PU data set
+            prob_true = LogisticRegression(random_state=sym).fit(X, y).predict_proba(X)[:, 1]
             prob_true[np.where(prob_true==1)] = 0.999
             prob_true[np.where(prob_true==0)] = 0.001
-            # Make PU data set
             s = np.zeros(n)
             if label_strat == 'S1':
                 prop_score = np.full(n, 0.1)
@@ -64,9 +79,8 @@ def experiment_lr(ds, nsym, strat):
                 for i in np.arange(0,n,1):
                     if y[i]==1:
                         s[i] = np.random.binomial(1, prop_score[i], size=1)
-            
+        
 
-            
             start_time = time.time()
             if method == 'oracle':
                 model = PUbasic()
@@ -118,11 +132,12 @@ def experiment_lr(ds, nsym, strat):
 
     
 if __name__ == "__main__":
+    # Lock every process to one thread to get accurate training times.
     mkl.set_num_threads(1)
     warnings.filterwarnings("ignore")
     for strat in ['S1', 'S2', 'S3', 'S4']:
         datasets = ['Breast-w','Diabetes','Kc1','Spambase','Wdbc','Banknote-authentication',
                     'Heart-statlog','Jm1','Ionosphere','Sonar','Haberman','Segment','Waveform-5000','Yeast','Musk','Abalone','Isolet','Madelon','Semeion','Vehicle']
-        pool = multiprocessing.Pool(20)
+        pool = multiprocessing.Pool(4)
         pool.map(partial(experiment_lr, nsym=20, strat=strat), datasets)
         pool.close()

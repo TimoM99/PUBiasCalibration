@@ -1,33 +1,51 @@
+import os
+# Not all pytorch functions work on mps, so we set the fallback to cpu
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 import argparse
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 import torch
 import time
-import km
+import Library.src.helper_files.km as km
 import pandas as pd
 
 from torchvision import transforms
-from Models.PUSB import PUSB, PUSBdeep
-from Models.LBE import LBEdeep, LBE
-from Models.PGlin import PUGerychDeep, PUGerych
-from utils import label_transform_MNIST, label_transform_CIFAR10, label_transform_USPS, label_transform_Fashion, make_binary_class, sigmoid 
+import src.Models.PUSB as pusb
+from src.Models.PUSB import PUSB, PUSBdeep
+import src.Models.LBE as lbe
+from src.Models.LBE import LBEdeep, LBE
+import src.Models.PGlin as pgl
+from src.Models.PGlin import PUGerychDeep, PUGerych
+from src.helper_files.utils import label_transform_MNIST, label_transform_CIFAR10, label_transform_USPS, label_transform_Fashion, make_binary_class, sigmoid 
 from torchvision.datasets import MNIST, CIFAR10, USPS, FashionMNIST
-from Models.basic import PUbasicDeep, PUbasic
-from Models.SAREM import SAREMdeep, SAREM
-from Models.threshold import PUthresholddeep, PUthreshold
+import src.Models.basic as basic
+from src.Models.basic import PUbasicDeep, PUbasic
+import src.Models.SAREM as sarem
+from src.Models.SAREM import SAREMdeep, SAREM
+import src.Models.threshold as threshold
+from src.Models.threshold import PUthresholddeep, PUthreshold
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, precision_score, recall_score, roc_curve, auc, precision_recall_curve
 from PIL import Image
 
 
+# This experiment is not entirely deterministic because of the PUSB loss function not being deterministic.
 def experiment_nn(args):
 
-#Set parameters:
+    #Set parameters for the experiment
     nsym = int(args.nsym)
     label_strat = str(args.strat)
     device = int(args.device)
     ds = str(args.ds)
-    np.random.seed(10)
+
+    # Set seeds
+    np.random.seed(42)
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
     batch_size = 512
     # Load data
     if ds == 'MNIST':
@@ -42,7 +60,7 @@ def experiment_nn(args):
         trainset = MNIST(root='./data', train=True, download=True, transform=transformer, target_transform=target_transformer)
         # Load dataset once without transforming targets, these will be transformed later in the script
         trainset_pu = MNIST(root='./data', train=True, download=True, transform=transformer)
-        testset = MNIST(root='./data', train=False, download=True, transform=transformer, target_transform=target_transformer)         
+        testset = MNIST(root='./data', train=False, download=True, transform=transformer, target_transform=target_transformer)
         
     elif ds == 'CIFAR10':
         dims = None
@@ -80,14 +98,14 @@ def experiment_nn(args):
         trainset_pu = FashionMNIST(root='./data', train=True, download=True, transform=transformer)
         testset = FashionMNIST(root='./data', train=False, download=True, transform=transformer, target_transform=target_transformer)
     
-    train_subset, val_subset = torch.utils.data.random_split(trainset, [0.8, 0.2], generator=torch.Generator().manual_seed(1))
+    train_subset, val_subset = torch.utils.data.random_split(trainset, [0.8, 0.2], generator=torch.Generator().manual_seed(42))
     
     trainloader = torch.utils.data.DataLoader(dataset=train_subset, shuffle=True, batch_size=batch_size, num_workers=0)
     valloader = torch.utils.data.DataLoader(dataset=val_subset, shuffle=False, batch_size=batch_size, num_workers=0)
 
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-    
+    # Label the datasets according to the label strategy
     if label_strat == 'S1':
         for index in range(len(trainset_pu.data)):
             img, label = trainset_pu.data[index], trainset_pu.targets[index]
@@ -98,11 +116,11 @@ def experiment_nn(args):
             img = Image.fromarray(img, mode=mode)
             img = transformer(img)
             
-            threshold = np.random.uniform()
+            thr = np.random.uniform()
             prop_score = 0.1
 
             if target_transformer(label) == 1:
-                if prop_score >= threshold:
+                if prop_score >= thr:
                     trainset_pu.targets[index] = 1
                 else:
                     trainset_pu.targets[index] = 0
@@ -110,6 +128,7 @@ def experiment_nn(args):
                 trainset_pu.targets[index] = 0
 
     elif label_strat == 'S2':
+        basic.seed(42)
         model = PUbasicDeep(clf=clf, dims=dims, device=device)
         model.fit(trainloader, valloader, epochs=100, lr=1e-5)
         model.eval()
@@ -124,11 +143,11 @@ def experiment_nn(args):
                 img = Image.fromarray(img, mode=mode)
                 img = transformer(img)
 
-                threshold = np.random.uniform()
+                thr = np.random.uniform()
                 prop_score = 0.1 * model.predict_proba(img.unsqueeze(0).to(model.device))
 
                 if target_transformer(label) == 1:
-                    if prop_score >= threshold:
+                    if prop_score >= thr:
                         trainset_pu.targets[index] = 1
                     else:
                         trainset_pu.targets[index] = 0
@@ -137,6 +156,7 @@ def experiment_nn(args):
 
 
     elif label_strat == 'S3':
+        basic.seed(42)
         model = PUbasicDeep(clf=clf, dims=dims, device=device)
         model.fit(trainloader, valloader, epochs=100, lr=1e-5)
         model.eval()
@@ -151,11 +171,11 @@ def experiment_nn(args):
                 img = Image.fromarray(img, mode=mode)
                 img = transformer(img)
 
-                threshold = np.random.uniform()
+                thr = np.random.uniform()
                 prop_score = torch.sigmoid(-0.5 * model.predict_proba(img.unsqueeze(0).to(model.device)) - 1.5)
 
                 if target_transformer(label) == 1:
-                    if prop_score >= threshold:
+                    if prop_score >= thr:
                         trainset_pu.targets[index] = 1
                     else:
                         trainset_pu.targets[index] = 0
@@ -164,6 +184,7 @@ def experiment_nn(args):
 
 
     elif label_strat == 'S4':
+        basic.seed(42)
         model = PUbasicDeep(clf=clf, dims=dims, device=device)
         model.fit(trainloader, valloader, epochs=100, lr=1e-5)
         model.eval()
@@ -178,11 +199,11 @@ def experiment_nn(args):
                 img = Image.fromarray(img, mode=mode)
                 img = transformer(img)
                 
-                threshold = np.random.uniform()
+                thr = np.random.uniform()
                 prop_score = 0.5 * torch.sigmoid(-0.5 * torch.logit(model.predict_proba(img.unsqueeze(0).to(model.device))))
 
                 if target_transformer(label) == 1:
-                    if prop_score.item() >= threshold:
+                    if prop_score.item() >= thr:
                         trainset_pu.targets[index] = 1
                     else:
                         trainset_pu.targets[index] = 0
@@ -207,6 +228,23 @@ def experiment_nn(args):
         results = np.zeros((nsym,8))
         
         for sym in np.arange(0,nsym,1):
+            # Set seeds
+            np.random.seed(sym)
+            torch.manual_seed(sym)
+            torch.cuda.manual_seed(sym)
+            torch.cuda.manual_seed_all(sym)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            km.seed(sym)
+
+            pusb.seed(sym)
+            lbe.seed(sym)
+            pgl.seed(sym)
+            sarem.seed(sym)
+            threshold.seed(sym)
+            basic.seed(sym)
+            
+            # We track time, but it's not super accurate in this experiment as we don't limit the resources.
             start = time.time()
             y_test = np.zeros(len(testloader.dataset))
             y_prob = np.zeros(len(testloader.dataset))
@@ -243,7 +281,6 @@ def experiment_nn(args):
                 inputs, labels = data[0].to(model.device), data[1]
                 y_test[i*batch_size:i*batch_size + len(labels)] = labels
                 y_prob[i*batch_size:i*batch_size + len(labels)] = model.predict_proba(inputs).squeeze().detach().cpu().numpy()
-                
             
             if np.any(np.isnan(y_prob)):
                 acc=0
@@ -299,14 +336,24 @@ def experiment_lr(args):
         results = np.zeros((nsym, 8))
         
         for sym in np.arange(0, nsym, 1):
+            # Set seeds
+            np.random.seed(sym)
+            km.seed(sym)
+
+            pusb.seed(sym)
+            lbe.seed(sym)
+            pgl.seed(sym)
+            sarem.seed(sym)
+            threshold.seed(sym)
+            basic.seed(sym)
             
             X, Xtest, y, ytest = train_test_split(Xall, yall, test_size=0.25, random_state=sym)
             n = X.shape[0]
 
+            # Make PU data set
             prob_true = LogisticRegression().fit(X, y).predict_proba(X)[:, 1]
             prob_true[np.where(prob_true==1)] = 0.999
             prob_true[np.where(prob_true==0)] = 0.001
-            # Make PU data set
             s = np.zeros(n)
             if label_strat == 'S1':
                 prop_score = np.full(n, 0.1)
@@ -375,6 +422,7 @@ def experiment_lr(args):
 
     
 if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('-nsym', required=True)
     parser.add_argument('-clf', required=True)
