@@ -25,8 +25,8 @@ class PU:
         xp = x[t == 1]
         xu = x[t == 0]
         n1 = len(xp)
-        if n1 == 0:
-            print(n1)
+        # if n1 == 0:
+            # print(n1)
         n0 = len(xu)
         gp = np.dot(xp, b)
         gu = np.dot(xu, b)

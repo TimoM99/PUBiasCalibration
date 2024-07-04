@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 import torch
 import time
-import Library.src.helper_files.km as km
+import src.helper_files.km as km
 import pandas as pd
 
 from torchvision import transforms
@@ -427,11 +427,12 @@ if __name__ == "__main__":
     parser.add_argument('-nsym', required=True)
     parser.add_argument('-clf', required=True)
     parser.add_argument('-strat', required=True)
-    parser.add_argument('-ds', required=True)
+    # parser.add_argument('-ds', required=True)
     parser.add_argument('-device', required=True)
-
     args = parser.parse_args()
-    if args.clf == 'nn':
-        experiment_nn(args)
-    elif args.clf == 'lr':
-        experiment_lr(args)
+    for ds in ['MNIST', 'CIFAR10', 'USPS', 'Fashion']:
+        args.ds = ds
+        if args.clf == 'nn':
+            experiment_nn(args)
+        elif args.clf == 'lr':
+            experiment_lr(args)

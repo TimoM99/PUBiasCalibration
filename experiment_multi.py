@@ -2,7 +2,7 @@ from functools import partial
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 import time
-import Library.src.helper_files.km as km
+import src.helper_files.km as km
 import pandas as pd
 import multiprocessing
 import mkl
@@ -19,7 +19,7 @@ import src.Models.SAREM as sarem
 from src.Models.SAREM import SAREM
 import src.Models.threshold as threshold
 from src.Models.threshold import PUthreshold
-from Library.src.helper_files.utils import make_binary_class, sigmoid 
+from src.helper_files.utils import make_binary_class, sigmoid 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, roc_curve, auc, precision_recall_curve
 import warnings
@@ -138,6 +138,6 @@ if __name__ == "__main__":
     for strat in ['S1', 'S2', 'S3', 'S4']:
         datasets = ['Breast-w','Diabetes','Kc1','Spambase','Wdbc','Banknote-authentication',
                     'Heart-statlog','Jm1','Ionosphere','Sonar','Haberman','Segment','Waveform-5000','Yeast','Musk','Abalone','Isolet','Madelon','Semeion','Vehicle']
-        pool = multiprocessing.Pool(4)
+        pool = multiprocessing.Pool(20)
         pool.map(partial(experiment_lr, nsym=20, strat=strat), datasets)
         pool.close()

@@ -136,7 +136,7 @@ def threshold_experiment(ds):
 if __name__ == '__main__':
     datasets = ['Breast-w','Diabetes','Kc1','Spambase','Wdbc','Banknote-authentication',
                 'Heart-statlog','Jm1','Ionosphere','Sonar','Haberman','Segment','Waveform-5000','Yeast','Musk','Abalone','Isolet','Madelon','Semeion','Vehicle']
-    pool = Pool(processes=4)
+    pool = Pool(processes=20)
     pool.map(threshold_experiment, datasets)
     pool.close()
 
