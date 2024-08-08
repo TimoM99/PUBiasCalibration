@@ -3,7 +3,7 @@ import tqdm
 import numpy as np
 
 from torch import nn
-from src.helper_files.classifiers import LR, MLPReLU, FullCNN
+from src.helper_files.classifiers import LR, MLPReLU, FullCNN, Resnet
 from src.threshold_optimizer import ThresholdOptimizer
 from src.helper_files.utils import EarlyStopping, sigmoid
 from sklearn.base import BaseEstimator
@@ -69,6 +69,8 @@ class PUthresholddeep(nn.Module):
             self.ntc = MLPReLU(dims=dims).to(self.device)
         elif clf == 'cnn':
             self.ntc = FullCNN().to(self.device)
+        elif clf == 'resnet':
+            self.ntc = Resnet().to(self.device)
 
         self.threshold = None
         

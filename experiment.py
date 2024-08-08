@@ -9,14 +9,14 @@ import time
 import src.helper_files.km as km
 import pandas as pd
 
-from torchvision import transforms
+from torchvision import transforms, datasets
 import src.Models.PUSB as pusb
 from src.Models.PUSB import PUSB, PUSBdeep
 import src.Models.LBE as lbe
 from src.Models.LBE import LBEdeep, LBE
 import src.Models.PGlin as pgl
 from src.Models.PGlin import PUGerychDeep, PUGerych
-from src.helper_files.utils import label_transform_MNIST, label_transform_CIFAR10, label_transform_USPS, label_transform_Fashion, make_binary_class, sigmoid 
+from src.helper_files.utils import CustomDataset, label_transform_MNIST, label_transform_CIFAR10, label_transform_USPS, label_transform_Fashion, label_transform_Alzheimer, make_binary_class, sigmoid
 from torchvision.datasets import MNIST, CIFAR10, USPS, FashionMNIST
 import src.Models.basic as basic
 from src.Models.basic import PUbasicDeep, PUbasic
@@ -29,6 +29,7 @@ from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, p
 from PIL import Image
 
 
+
 # This experiment is not entirely deterministic because of the PUSB loss function not being deterministic.
 def experiment_nn(args):
 
@@ -39,6 +40,7 @@ def experiment_nn(args):
     ds = str(args.ds)
 
     # Set seeds
+    torch.cuda.empty_cache()
     np.random.seed(42)
     torch.manual_seed(42)
     torch.cuda.manual_seed(42)
@@ -97,7 +99,22 @@ def experiment_nn(args):
         trainset = FashionMNIST(root='./data', train=True, download=True, transform=transformer, target_transform=target_transformer)
         trainset_pu = FashionMNIST(root='./data', train=True, download=True, transform=transformer)
         testset = FashionMNIST(root='./data', train=False, download=True, transform=transformer, target_transform=target_transformer)
-    
+
+    elif ds == 'Alzheimer':
+        dims = 224
+        batch_size = 32
+        clf = 'resnet'
+        transformer = transforms.Compose([
+            transforms.Resize((224, 224)),             # Resize images to 224x224 pixels
+            transforms.ToTensor(),                     # Convert images to PyTorch tensors
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+        
+        target_transformer = label_transform_Alzheimer()
+        
+        trainset = CustomDataset('data/MRI_split/train', transform=transformer, target_transform=target_transformer)
+        trainset_pu = CustomDataset('data/MRI_split/train', transform=transformer)
+        testset = CustomDataset('data/MRI_split/test', transform=transformer, target_transform=target_transformer)
+
     train_subset, val_subset = torch.utils.data.random_split(trainset, [0.8, 0.2], generator=torch.Generator().manual_seed(42))
     
     trainloader = torch.utils.data.DataLoader(dataset=train_subset, shuffle=True, batch_size=batch_size, num_workers=0)
@@ -106,16 +123,17 @@ def experiment_nn(args):
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=True, num_workers=0)
 
     # Label the datasets according to the label strategy
+    print('observing labels')
+    # TODO; Make these into target transformer classes -> not possible, need to take into account the image.
     if label_strat == 'S1':
         for index in range(len(trainset_pu.data)):
             img, label = trainset_pu.data[index], trainset_pu.targets[index]
-            
             if torch.is_tensor(img):
                 img = img.numpy()
-            mode = None if ds == 'CIFAR10' else 'L'
+            mode = None if ds in ['CIFAR10'] else 'RGB' if ds in ['Alzheimer'] else 'L'
+
             img = Image.fromarray(img, mode=mode)
             img = transformer(img)
-            
             thr = np.random.uniform()
             prop_score = 0.1
 
@@ -139,7 +157,7 @@ def experiment_nn(args):
                 
                 if torch.is_tensor(img):
                     img = img.numpy()
-                mode = None if ds == 'CIFAR10' else 'L'
+                mode = None if ds in ['CIFAR10'] else 'RGB' if ds in ['Alzheimer'] else 'L'
                 img = Image.fromarray(img, mode=mode)
                 img = transformer(img)
 
@@ -167,7 +185,7 @@ def experiment_nn(args):
                 
                 if torch.is_tensor(img):
                     img = img.numpy()
-                mode = None if ds == 'CIFAR10' else 'L'
+                mode = None if ds in ['CIFAR10'] else 'RGB' if ds in ['Alzheimer'] else 'L'
                 img = Image.fromarray(img, mode=mode)
                 img = transformer(img)
 
@@ -195,7 +213,7 @@ def experiment_nn(args):
                 
                 if torch.is_tensor(img):
                     img = img.numpy()
-                mode = None if ds == 'CIFAR10' else 'L'
+                mode = None if ds in ['CIFAR10'] else 'RGB' if ds in ['Alzheimer'] else 'L'
                 img = Image.fromarray(img, mode=mode)
                 img = transformer(img)
                 
@@ -222,6 +240,7 @@ def experiment_nn(args):
     neg_train_subset_pu = torch.utils.data.Subset(train_subset_pu, unlabeled_ind)
 
     for method in ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle']:
+    # for method in ['oracle']:
 
         print('\n Method:', method)
         
@@ -229,6 +248,7 @@ def experiment_nn(args):
         
         for sym in np.arange(0,nsym,1):
             # Set seeds
+            torch.cuda.empty_cache()
             np.random.seed(sym)
             torch.manual_seed(sym)
             torch.cuda.manual_seed(sym)
@@ -236,6 +256,7 @@ def experiment_nn(args):
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
             km.seed(sym)
+            
 
             pusb.seed(sym)
             lbe.seed(sym)
@@ -250,7 +271,7 @@ def experiment_nn(args):
             y_prob = np.zeros(len(testloader.dataset))
             if method == 'oracle':
                 model = PUbasicDeep(clf=clf, dims=dims, device=device)
-                model.fit(trainloader, valloader, epochs=100, lr=1e-5)
+                model.fit(trainloader, valloader, epochs=25, lr=1e-5)
             else: 
                 if method == 'naive':
                     model = PUbasicDeep(clf=clf, dims=dims, device=device)
@@ -274,7 +295,7 @@ def experiment_nn(args):
                 elif method == 'pglin':
                     model = PUGerychDeep(clf=clf, dims=dims, device=device)
 
-                model.fit(trainloader=trainloader_pu, valloader=valloader_pu, epochs=100, lr=1e-5)
+                model.fit(trainloader=trainloader_pu, valloader=valloader_pu, epochs=25, lr=1e-5)
             end = time.time()
 
             for i, data in enumerate(testloader):
@@ -331,6 +352,7 @@ def experiment_lr(args):
     
     
     for method in ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle']:
+    # for method in ['oracle']:
         print('\n Method:', method)
         
         results = np.zeros((nsym, 8))
@@ -430,7 +452,7 @@ if __name__ == "__main__":
     # parser.add_argument('-ds', required=True)
     parser.add_argument('-device', required=True)
     args = parser.parse_args()
-    for ds in ['MNIST', 'CIFAR10', 'USPS', 'Fashion']:
+    for ds in ['Alzheimer']:
         args.ds = ds
         if args.clf == 'nn':
             experiment_nn(args)

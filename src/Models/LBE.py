@@ -6,7 +6,7 @@ import numpy as np
 
 from torch import nn
 from copy import deepcopy
-from src.helper_files.classifiers import MLPReLU, FullCNN, LR
+from src.helper_files.classifiers import MLPReLU, FullCNN, LR, Resnet
 from src.helper_files.utils import EarlyStopping
 from sklearn.base import BaseEstimator
 from src.helper_files.lbe.LBE import lbe_train, lbe_predict_proba
@@ -48,6 +48,9 @@ class LBEdeep(nn.Module):
         elif clf == 'cnn':
             self.h = FullCNN().to(self.device)
             self.eta = FullCNN().to(self.device)
+        elif clf == 'resnet':
+            self.h = Resnet().to(self.device)
+            self.eta = Resnet().to(self.device)
 
         self.h_frozen = deepcopy(self.h).to(self.device)
         self.eta_frozen = deepcopy(self.eta).to(self.device)

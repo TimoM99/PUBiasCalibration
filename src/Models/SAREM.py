@@ -4,7 +4,7 @@ import torch
 import tqdm
 
 from torch import nn
-from src.helper_files.classifiers import MLPReLU, LR, FullCNN
+from src.helper_files.classifiers import MLPReLU, LR, FullCNN, Resnet
 from src.helper_files.sarpu.pu_learning import pu_learn_sar_em
 from src.helper_files.utils import EarlyStopping
 from copy import deepcopy
@@ -49,6 +49,9 @@ class SAREMdeep(nn.Module):
         elif clf == 'cnn':
             self.f = FullCNN().to(self.device)
             self.e = FullCNN().to(self.device)
+        elif clf == 'resnet':
+            self.f = Resnet().to(self.device)
+            self.e = Resnet().to(self.device)
         
 
     def predict_proba(self, x):

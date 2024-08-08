@@ -1,4 +1,5 @@
 from torch import nn, sigmoid
+from torchvision import models
 
 # Simple Logistic Regression model, but we use the version by sklearn instead.
 class LR(nn.Module):
@@ -87,6 +88,19 @@ class FullCNN(nn.Module):
 
     def forward(self, x, probabilistic):
         h = self.sequential_CNN(x)
+        if probabilistic:
+            h = sigmoid(h)
+        return h
+    
+class Resnet(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.model = models.resnet50(pretrained=True)
+        num_ftrs = self.model.fc.in_features
+        self.model.fc = nn.Linear(num_ftrs, 1)
+
+    def forward(self, x, probabilistic):
+        h = self.model(x)
         if probabilistic:
             h = sigmoid(h)
         return h

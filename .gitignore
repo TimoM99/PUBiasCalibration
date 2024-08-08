@@ -2,7 +2,7 @@
 /plots_*
 /results*
 /tables*
-/__pycache__*
+**/__pycache__/
 /Submission*
 
 /.DS_Store

@@ -4,7 +4,7 @@ import numpy as np
 
 from torch import nn
 
-from src.helper_files.classifiers import FullCNN, MLPReLU, LR
+from src.helper_files.classifiers import FullCNN, MLPReLU, LR, Resnet
 from src.helper_files.utils import EarlyStopping
 from sklearn.base import BaseEstimator
 import src.helper_files.pusb.pusb_linear_kernel as pusb
@@ -70,6 +70,8 @@ class PUSBdeep(nn.Module):
             self.clf = MLPReLU(dims=dims).to(self.device)
         elif clf == 'cnn':
             self.clf = FullCNN().to(self.device)
+        elif clf == 'resnet':
+            self.clf = Resnet().to(self.device)
 
         self.class_prior = class_prior
         self.threshold = None

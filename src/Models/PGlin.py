@@ -4,7 +4,7 @@ import numpy as np
 
 from torch import nn
 from src.helper_files.utils import EarlyStopping
-from src.helper_files.classifiers import LR, MLPReLU, FullCNN
+from src.helper_files.classifiers import LR, MLPReLU, FullCNN, Resnet
 from sklearn.base import BaseEstimator 
 from sklearn.linear_model import LogisticRegression
 
@@ -53,6 +53,8 @@ class PUGerychDeep(nn.Module):
             self.clf = MLPReLU(dims=dims).to(self.device)
         elif clf == 'cnn':
             self.clf = FullCNN().to(self.device)
+        elif clf == 'resnet':
+            self.clf = Resnet().to(self.device)
         
         self.max_sx = 0
 

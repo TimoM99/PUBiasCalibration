@@ -4,9 +4,10 @@ import tqdm
 
 from sklearn.base import BaseEstimator
 from torch import nn
-from src.helper_files.classifiers import MLPReLU, FullCNN, LR
+from src.helper_files.classifiers import MLPReLU, FullCNN, LR, Resnet
 from src.helper_files.utils import EarlyStopping
 from sklearn.linear_model import LogisticRegression
+from torchvision import models
 
 def seed(seed):
     torch.manual_seed(seed)
@@ -45,6 +46,8 @@ class PUbasicDeep(nn.Module):
             self.clf = MLPReLU(dims=dims).to(self.device)
         elif clf == 'cnn':
             self.clf = FullCNN().to(self.device)
+        elif clf == 'resnet':
+            self.clf = Resnet().to(self.device)
 
     def predict_proba(self, x):
         return self.clf(x, probabilistic=True)
