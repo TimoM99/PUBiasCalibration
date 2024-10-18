@@ -24,6 +24,8 @@ import src.Models.SAREM as sarem
 from src.Models.SAREM import SAREMdeep, SAREM
 import src.Models.threshold as threshold
 from src.Models.threshold import PUthresholddeep, PUthreshold
+from src.Models.PUe import PUedeep, PUe
+import src.Models.PUe as pue
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, precision_score, recall_score, roc_curve, auc, precision_recall_curve
 from PIL import Image
@@ -124,7 +126,6 @@ def experiment_nn(args):
 
     # Label the datasets according to the label strategy
     print('observing labels')
-    # TODO; Make these into target transformer classes -> not possible, need to take into account the image.
     if label_strat == 'S1':
         for index in range(len(trainset_pu.data)):
             img, label = trainset_pu.data[index], trainset_pu.targets[index]
@@ -228,25 +229,46 @@ def experiment_nn(args):
                 else:
                     trainset_pu.targets[index] = 0
     
+    # Making the case control dataset
 
+    def custom_transform(img):
+        if torch.is_tensor(img):
+            img = img.numpy()
+        mode = None if ds in ['CIFAR10'] else 'RGB' if ds in ['Alzheimer'] else 'L'
+
+        img = Image.fromarray(img, mode=mode)
+        img = transformer(img)
+        return img
+    
+    # Apply the transformation to the subset with label 0
+    transformed_data_1 = torch.stack([custom_transform(img) for img in np.array(trainset_pu.data)])
+
+    # Apply the transformation to the subset with label 1
+    positive_indices = np.array(trainset_pu.targets) == 1
+    transformed_data_2 = torch.stack([custom_transform(img) for img in np.array(trainset_pu.data)[positive_indices]])
+
+    # Concatenate the transformed tensors
+    combined_data = torch.concat((transformed_data_1, transformed_data_2))
+
+    # Make the case-control dataset
+    trainset_pu_case_control = torch.utils.data.TensorDataset(combined_data, 
+                                                             torch.concat((torch.zeros(len(trainset_pu.data)), torch.ones(len(np.array(trainset_pu.data)[positive_indices])))))
     train_subset_pu, val_subset_pu = torch.utils.data.random_split(trainset_pu, [0.8, 0.2], generator=torch.Generator().manual_seed(40))
+    train_subset_pu_case_control, val_subset_pu_case_control = torch.utils.data.random_split(trainset_pu_case_control, [0.8, 0.2], generator=torch.Generator().manual_seed(40))
 
     trainloader_pu = torch.utils.data.DataLoader(train_subset_pu, batch_size=batch_size, shuffle=True, num_workers=0)
+    trainloader_pu_case_control = torch.utils.data.DataLoader(train_subset_pu_case_control, batch_size=batch_size, shuffle=True, num_workers=0)
     valloader_pu = torch.utils.data.DataLoader(val_subset_pu, batch_size=batch_size, shuffle=False, num_workers=0)
-    
-    observed_ind = [i for i, (_, y) in enumerate(train_subset_pu) if y == 1]
-    unlabeled_ind = [i for i in range(len(train_subset_pu)) if i not in observed_ind]
-    pos_train_subset_pu = torch.utils.data.Subset(train_subset_pu, observed_ind)
-    neg_train_subset_pu = torch.utils.data.Subset(train_subset_pu, unlabeled_ind)
+    valloader_pu_case_control = torch.utils.data.DataLoader(val_subset_pu_case_control, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    for method in ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle']:
-    # for method in ['oracle']:
+    for method in ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle', 'PUe']:
 
         print('\n Method:', method)
         
         results = np.zeros((nsym,8))
         
         for sym in np.arange(0,nsym,1):
+            print(sym)
             # Set seeds
             torch.cuda.empty_cache()
             np.random.seed(sym)
@@ -259,11 +281,28 @@ def experiment_nn(args):
             
 
             pusb.seed(sym)
+            pue.seed(sym)
             lbe.seed(sym)
             pgl.seed(sym)
             sarem.seed(sym)
             threshold.seed(sym)
             basic.seed(sym)
+
+            if method in ['pusb', 'PUe']:
+                observed_ind = [i for i, (_, y) in enumerate(train_subset_pu_case_control) if y == 1]
+                unlabeled_ind = [i for i in range(len(train_subset_pu_case_control)) if i not in observed_ind]
+                pos_train_subset_pu = torch.utils.data.Subset(train_subset_pu_case_control, observed_ind)
+                neg_train_subset_pu = torch.utils.data.Subset(train_subset_pu_case_control, unlabeled_ind)
+
+                sample_size = 1600
+                observed_loader = torch.utils.data.DataLoader(dataset=pos_train_subset_pu, shuffle=True, batch_size=min(sample_size, len(pos_train_subset_pu)))
+                unlabeled_loader = torch.utils.data.DataLoader(dataset=neg_train_subset_pu, shuffle=True, batch_size=min(sample_size, len(neg_train_subset_pu)))
+                X_mixture = torch.flatten(next(iter(unlabeled_loader))[0], start_dim=1).float().numpy().astype(np.double)
+                X_component = torch.flatten(next(iter(observed_loader))[0], start_dim=1).float().numpy().astype(np.double)
+
+                km1 = km.km_default(X_mixture, X_component)
+                naive_class_prior = len(pos_train_subset_pu)/len(train_subset_pu_case_control)
+                est_pi = (1-naive_class_prior)*km1[1] + naive_class_prior
             
             # We track time, but it's not super accurate in this experiment as we don't limit the resources.
             start = time.time()
@@ -271,7 +310,7 @@ def experiment_nn(args):
             y_prob = np.zeros(len(testloader.dataset))
             if method == 'oracle':
                 model = PUbasicDeep(clf=clf, dims=dims, device=device)
-                model.fit(trainloader, valloader, epochs=25, lr=1e-5)
+                model.fit(trainloader, valloader, epochs=100, lr=1e-5)
             else: 
                 if method == 'naive':
                     model = PUbasicDeep(clf=clf, dims=dims, device=device)
@@ -281,21 +320,16 @@ def experiment_nn(args):
                     model = SAREMdeep(clf=clf, dims=dims, device=device)
                 elif method == 'threshold':
                     model = PUthresholddeep(clf=clf, dims=dims, device=device)
+                elif method == 'PUe':
+                    model = PUedeep(clf=clf, dims=dims, est_pi=est_pi, device=device)
                 elif method == 'pusb':
-                    sample_size = 1600
-                    observed_loader = torch.utils.data.DataLoader(dataset=pos_train_subset_pu, shuffle=True, batch_size=min(sample_size, len(pos_train_subset_pu)))
-                    unlabeled_loader = torch.utils.data.DataLoader(dataset=neg_train_subset_pu, shuffle=True, batch_size=min(sample_size, len(neg_train_subset_pu)))
-                    X_mixture = torch.flatten(next(iter(unlabeled_loader))[0], start_dim=1).float().numpy().astype(np.double)
-                    X_component = torch.flatten(next(iter(observed_loader))[0], start_dim=1).float().numpy().astype(np.double)
-
-                    km1 = km.km_default(X_mixture, X_component)
-                    naive_class_prior = len(pos_train_subset_pu)/len(train_subset_pu)
-                    est_pi = (1-naive_class_prior)*km1[1] + naive_class_prior
                     model = PUSBdeep(clf=clf, dims=dims, class_prior=est_pi, device=device)
                 elif method == 'pglin':
                     model = PUGerychDeep(clf=clf, dims=dims, device=device)
-
-                model.fit(trainloader=trainloader_pu, valloader=valloader_pu, epochs=25, lr=1e-5)
+                if method in ['pusb', 'PUe']:
+                    model.fit(trainloader=trainloader_pu_case_control, valloader=valloader_pu_case_control, epochs=100, lr=1e-5)
+                else:
+                    model.fit(trainloader=trainloader_pu, valloader=valloader_pu, epochs=100, lr=1e-5)
             end = time.time()
 
             for i, data in enumerate(testloader):
@@ -351,7 +385,7 @@ def experiment_lr(args):
     yall = make_binary_class(yall)
     
     
-    for method in ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle']:
+    for method in ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle', 'threshold_balanced']:
     # for method in ['oracle']:
         print('\n Method:', method)
         
@@ -392,6 +426,9 @@ def experiment_lr(args):
                     if y[i]==1:
                         s[i] = np.random.binomial(1, prop_score[i], size=1)
             
+            if method in ['pusb', 'PUe']: #Transform data to case-control scenario
+                X = np.concatenate((X, X[s==1]))
+                s = np.concatenate((np.zeros(len(s)), np.ones(int(np.sum(s)))))
             
             start_time = time.time()
             if method == 'oracle':
@@ -399,7 +436,7 @@ def experiment_lr(args):
                 model.fit(X,y)
             else:
                 if method == 'threshold':
-                    model = PUthreshold() 
+                    model = PUthreshold()
                 elif method == 'sar-em':
                     model = SAREM()
                 elif method == 'lbe':
@@ -448,12 +485,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-nsym', required=True)
     parser.add_argument('-clf', required=True)
-    parser.add_argument('-strat', required=True)
-    # parser.add_argument('-ds', required=True)
+    # parser.add_argument('-strat', required=True)
     parser.add_argument('-device', required=True)
+    parser.add_argument('-ds', required=True)
     args = parser.parse_args()
-    for ds in ['Alzheimer']:
-        args.ds = ds
+    for strat in ['S1', 'S2', 'S3', 'S4']:
+        args.strat = strat
         if args.clf == 'nn':
             experiment_nn(args)
         elif args.clf == 'lr':

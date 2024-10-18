@@ -127,7 +127,7 @@ class CustomDataset(Dataset):
             image = Image.open(img_path).convert('RGB')
             image = np.array(image)
             self.images.append(image)
-
+        # self.images = torch.tensor(self.images, dtype=torch.float32)
         # Convert labels to tensor
         self.labels = torch.tensor(self.labels, dtype=torch.long)
 

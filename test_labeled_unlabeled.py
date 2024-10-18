@@ -2,7 +2,7 @@
 import numpy as np
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
-from Library.src.threshold_optimizer import ThresholdOptimizer
+from src.threshold_optimizer import ThresholdOptimizer
 from matplotlib import pyplot as plt
 
 nb_labeled = 2000

@@ -18,6 +18,8 @@ from src.Models.basic import PUbasic
 import src.Models.SAREM as sarem
 from src.Models.SAREM import SAREM
 import src.Models.threshold as threshold
+from src.Models.PUe import PUe
+import src.Models.PUe as pue
 from src.Models.threshold import PUthreshold
 from artificial import generate_artificial_data_gen
 
@@ -31,7 +33,7 @@ p=10 # number of features
 n=2000 # number of samples
 
 nsym = 20
-method_list = ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle']
+method_list = ['PUe', 'pusb', 'threshold_balanced', 'sar-em', 'lbe', 'pglin', 'threshold', 'oracle']
 label_strats = ['S1', 'S2', 'S3', 'S4']
 
 for label_strat in label_strats:
@@ -53,6 +55,7 @@ for label_strat in label_strats:
                 sarem.seed(sym)
                 threshold.seed(sym)
                 basic.seed(sym)
+                pue.seed(sym)
                 
                 print('|', sep=' ', end='', flush=True) 
                 y, ytest, X,Xtest, prob_true, prob_true_test = generate_artificial_data_gen(n=n,p=p,b=1,xdistr=xdistr)
@@ -75,7 +78,10 @@ for label_strat in label_strats:
                         if y[i]==1:
                             s[i] = np.random.binomial(1, prop_score[i], size=1)
                 
-                
+                if method in ['pusb', 'PUe']: #Transform data to case-control scenario
+                    X = np.concatenate((X, X[s==1]))
+                    s = np.concatenate((np.zeros(len(s)), np.ones(int(np.sum(s)))))
+
                 if method == 'oracle':
                     model = PUbasic()
                     model.fit(X,y)
@@ -84,6 +90,8 @@ for label_strat in label_strats:
                         model = PUthreshold() 
                     elif method == 'sar-em':
                         model = SAREM()
+                    elif method == 'PUe':
+                        model = PUe()
                     elif method == 'lbe':
                         model = LBE()
                     elif method == 'pglin':

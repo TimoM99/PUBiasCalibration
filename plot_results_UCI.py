@@ -13,7 +13,7 @@ fig, axs = plt.subplots(2, 2, figsize=(10,10))
 axs = axs.flatten()
 for j, strat in enumerate(['S1', 'S2', 'S3', 'S4']):
     res = np.zeros((20, 2))
-    for i, ds in enumerate(sorted(os.listdir('Library/data'))):
+    for i, ds in enumerate(sorted(os.listdir('data/datasets'))):
         if score_type == 'bacc':
             index = 6
         elif score_type == 'auc':
@@ -24,8 +24,8 @@ for j, strat in enumerate(['S1', 'S2', 'S3', 'S4']):
             raise ValueError('{} is not supported as a score type'.format(score_type))
         
         
-        res[i, 0] = np.mean(np.loadtxt('Library/results_UCI/results_used_in_paper/results_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method1, strat, ds.split('.')[0]))[:, index])
-        res[i, 1] = np.mean(np.loadtxt('Library/results_UCI/results_used_in_paper/results_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method2, strat, ds.split('.')[0]))[:, index])
+        res[i, 0] = np.mean(np.loadtxt('results_UCI/results_parallel_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method1, strat, ds.split('.')[0]))[:, index])
+        res[i, 1] = np.mean(np.loadtxt('results_UCI/results_parallel_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method2, strat, ds.split('.')[0]))[:, index])
 
     w = res[:, 1] > (res[:, 0] + 0.01)
     l = res[:, 1] < (res[:, 0] - 0.01)
@@ -64,4 +64,4 @@ for j, strat in enumerate(['S1', 'S2', 'S3', 'S4']):
 handles, labels = axs[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='upper center', ncol=3, fontsize=22)
 fig.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust the rect parameter to create space for the legend
-fig.savefig('Library/plots_results_UCI/plot_{}_vs_{}.pdf'.format(method1, method2))
+fig.savefig('plots_results_UCI/plot_{}_vs_{}.pdf'.format(method1, method2))

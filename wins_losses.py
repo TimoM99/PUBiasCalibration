@@ -9,7 +9,7 @@ def main(args):
     label_strat = str(args.strat)
     classifier = str(args.clf)
     
-    method_list = ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle']
+    method_list = ['threshold', 'sar-em', 'pusb', 'pglin', 'lbe', 'oracle', 'PUe', 'threshold_balanced']
 
     datasets = ['Abalone', 'Banknote-authentication', 'Breast-w', 'Diabetes', 'Haberman', 'Heart-statlog', 'Ionosphere', 'Isolet', 'Jm1', 'Kc1', 'Madelon', 'Musk', 'Segment', 'Semeion', 'Sonar', 'Spambase', 'Vehicle', 'Waveform-5000', 'Wdbc', 'Yeast'] 
     ind = 1 # Index for balanced accuracy according to experiment.py
@@ -20,11 +20,11 @@ def main(args):
         wins = 0
         losses = 0
         for ds in datasets:
-            file_threshold = score_folder + '/results_method_' + 'threshold' + '_label_scheme_' + label_strat + '_classifier_' + classifier + '_ds_' + ds + ".txt"    
+            file_threshold = score_folder + '/results_parallel_method_' + 'threshold' + '_label_scheme_' + label_strat + '_classifier_' + classifier + '_ds_' + ds + ".txt"    
             res_threshold = np.loadtxt(file_threshold)
             avg_bacc_threshold = np.average(res_threshold[:, ind])
 
-            file_comparison = score_folder + '/results_method_' + method + '_label_scheme_' + label_strat + '_classifier_' + classifier + '_ds_' + ds + ".txt"    
+            file_comparison = score_folder + '/results_parallel_method_' + method + '_label_scheme_' + label_strat + '_classifier_' + classifier + '_ds_' + ds + ".txt"    
             res_comparison = np.loadtxt(file_comparison)
             avg_bacc_comparison = np.average(res_comparison[:, ind])
 

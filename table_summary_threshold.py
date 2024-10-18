@@ -25,8 +25,8 @@ else:
 
 for j, strat in enumerate(['S1', 'S2', 'S3', 'S4']):
     res = np.zeros((20, 2))
-    for i, ds in enumerate(os.listdir('Library/data')):
-        temp = np.loadtxt('Library/results_threshold/results_used_in_paper/results_threshold_label_scheme_{}_ds_{}.txt'.format(strat, ds))[:, start_index:start_index + 4]
+    for i, ds in enumerate(os.listdir('data/datasets')):
+        temp = np.loadtxt('results_threshold/results_threshold_label_scheme_{}_ds_{}.txt'.format(strat, ds))[:, start_index:start_index + 4]
         relative_error = np.maximum(temp[:, 0][:, None] - temp[:, 1:4], np.zeros(temp[:, 1:4].shape))/temp[:, 0][:, None]
         res[i] = np.mean(relative_error[:, 0:2], axis=0)
 

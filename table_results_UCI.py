@@ -10,10 +10,10 @@ for strat in ['S1', 'S2', 'S3', 'S4']:
     f = open(file_name, 'w')
 
     f.write(r'\toprule' + '\n')
-    f.write('Dataset & oracle & sar-em & lbe & pglin & pusb & threshold' + r'\\' + '\n')
+    f.write('Dataset & oracle & sar-em & PUe & lbe & pglin & pusb & threshold' + r'\\' + '\n')
     f.write(r'\midrule' + '\n')
 
-    for i, ds in enumerate(sorted(os.listdir('data'))):
+    for i, ds in enumerate(sorted(os.listdir('data/datasets'))):
         if score_type == 'bacc':
             index = 6
         elif score_type == 'f1':
@@ -24,17 +24,17 @@ for strat in ['S1', 'S2', 'S3', 'S4']:
             index = 0
         else:
             raise ValueError('{} is not supported as a score type'.format(score_type))
-        res = np.zeros((20, 6))
+        res = np.zeros((20, 7))
 
-        for i, method in enumerate(['oracle', 'sar-em', 'lbe', 'pglin', 'pusb', 'threshold']):
-            res[:, i] = np.loadtxt('results_UCI/results_used_in_paper/results_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method, strat, ds.split('.')[0]))[:, index]
-
+        for i, method in enumerate(['oracle', 'sar-em', 'PUe', 'lbe', 'pglin', 'pusb', 'threshold']):
+            res[:, i] = np.loadtxt('results_UCI/results_parallel_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method, strat, ds.split('.')[0]))[:, index]
+            
         
         
         table_mean = np.mean(res, axis=0)
         index_max = np.argmax(table_mean[1:]) + 1
         table_std = np.std(res, axis=0)
-        table_values = list(map(lambda x, y: '{} \pm {}'.format(x, y), np.round(table_mean, 3), np.round(table_std, 3)))
+        table_values = list(map(lambda x, y: '{:.3f} \pm {:.3f}'.format(x, y), np.round(table_mean, 3), np.round(table_std, 3)))
         table_values[index_max] = '\mathbf{{{}}}'.format(table_values[index_max])
         table_string = [ds.split('.')[0]]
         table_string.extend(list(map(lambda x: '${}$'.format(x), table_values)))
