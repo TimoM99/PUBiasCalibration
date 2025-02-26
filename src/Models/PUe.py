@@ -1,8 +1,3 @@
-from calendar import c
-from locale import normalize
-from math import isnan, log, nan
-from xml.etree.ElementTree import C14NWriterTarget
-from scipy import optimize
 import torch
 import tqdm
 import numpy as np
@@ -10,10 +5,8 @@ import src.helper_files.km as km
 
 from torch import nn
 from src.helper_files.classifiers import LR, MLPReLU, FullCNN, Resnet
-from src.threshold_optimizer import ThresholdOptimizer
-from src.helper_files.utils import EarlyStopping, sigmoid
+from src.helper_files.utils import EarlyStopping
 from sklearn.base import BaseEstimator
-from sklearn.linear_model import LogisticRegression
 
 def seed(seed):
     torch.manual_seed(seed)
@@ -26,26 +19,66 @@ def seed(seed):
 
 class CustomLoss_e(nn.Module):
     def __init__(self, n_p, n_U, alpha) -> None:
+        """
+        Initializes the custom loss function for the e model.
+        
+        Parameters
+        ----------
+        n_p : int
+            The number of positive samples.
+        n_U : int
+            The number of unlabeled samples.
+        alpha : float
+            The alpha parameter of the model.
+        """
         super().__init__()
         self.n_p = n_p
         self.n_U = n_U
         self.alpha = alpha
 
     def forward(self, y_pred, y_true):
+        """
+        Calculates the loss of the model.
+        
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            The predicted values of the model.
+        y_true : torch.Tensor
+            The true values of the model.
+        """
         loss1 = torch.sum(-1/(self.n_p +self.n_U)*y_true*torch.log(torch.sigmoid(y_pred)))
         loss2 = torch.sum(-1/(self.n_p + self.n_U)*(1-y_true)*torch.log(1-torch.sigmoid(y_pred)))
         regularisation = self.alpha*torch.abs(torch.sum(torch.sigmoid(y_pred)) - self.n_p)
         loss = loss1 + loss2 + regularisation
-        # if torch.isnan(loss):
-        #     print(loss1,loss2,regularisation)
         return loss
     
 class CustomLoss_clf(nn.Module):
     def __init__(self, pi) -> None:
+        """
+        Initializes the custom loss function for the classifier model.
+        
+        Parameters
+        ----------
+        pi : float
+            The class prior of the data.
+        """
         super().__init__()
         self.pi = pi
 
     def forward(self, y_pred, y_true, prop_scores):
+        """
+        Calculates the loss of the model.
+        
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            The predicted values of the model.
+        y_true : torch.Tensor
+            The true values of the model.
+        prop_scores : torch.Tensor
+            The prop scores of the model.
+        """
         loss1 = torch.sum(-1/prop_scores*y_true*torch.log(torch.sigmoid(y_pred)))
         loss2 = torch.sum(-(1-y_true)*torch.log(1-torch.sigmoid(y_pred)))
         loss3 = torch.sum(-1/prop_scores*y_true*torch.log(1-torch.sigmoid(y_pred)))
@@ -66,10 +99,25 @@ class LogisticRegressionModel(nn.Module):
 class PUe(BaseEstimator):
    
     def __init__(self):
+        """
+        Initializes the PUe model.
+        """
         self.e = None
         self.clf = None
         
     def fit(self, X, s):
+        """
+        Fits the PUe model to the data.
+        
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The data to fit the model to.
+        s : numpy.ndarray
+            The observed labels of the data.
+        """
+
+        # Estimate class prior
         X_mixture = X[np.where(s==0)[0],:]
         X_component = X[np.where(s==1)[0],:]
         km1 = km.km_default(X_mixture, X_component)
@@ -78,7 +126,7 @@ class PUe(BaseEstimator):
         X = torch.from_numpy(X).float()
         s = torch.from_numpy(s).float()
         self.e = LogisticRegressionModel(X.shape[1])
-        criterion = CustomLoss_e(n_p=torch.sum(s), n_U=s.shape[0] - torch.sum(s), alpha=15)
+        criterion = CustomLoss_e(n_p=torch.sum(s), n_U=s.shape[0] - torch.sum(s), alpha=15) #Alpha=15 as recommended in the original paper.
         optimizer = torch.optim.Adam(self.e.parameters(), lr=1e-3)
 
         for epoch in range(20):
@@ -105,9 +153,24 @@ class PUe(BaseEstimator):
         return self
 
     def predict(self, X):
+       """
+       Predicts the labels of the data.
+       
+       Parameters
+       ----------
+       X : numpy.ndarray
+           The data to predict the labels of.
+       """
        return np.where(self.predict_proba(X)>0.5,1,0) 
         
     def predict_proba(self, Xtest):
+        """
+        Predicts the probabilities of the data.
+        
+        Parameters
+        ----------
+        Xtest : numpy.ndarray
+            The data to predict the probabilities of."""
         with torch.no_grad():
             Xtest = torch.from_numpy(Xtest).float()
             scores = self.clf(Xtest)
@@ -117,6 +180,20 @@ class PUe(BaseEstimator):
 
 class PUedeep(nn.Module):
     def __init__(self, clf, dims=None, est_pi=None, device=0) -> None:
+        """
+        Initializes the PUedeep model.
+        
+        Parameters
+        ----------
+        clf : str
+            The type of classifier to use.
+        dims : tuple
+            The dimensions of the data.
+        est_pi : float
+            The class prior of the data.
+        device : int
+            The device to use.
+        """
         super().__init__()
         self.device = "mps" if getattr(torch, 'has_mps', False) else "cuda:{}".format(device) if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
@@ -141,12 +218,26 @@ class PUedeep(nn.Module):
 
         
     def predict_proba(self, x):
-        # assert self.threshold != None, 'The model has to be fit before predictions can be made.'
+        """
+        Predicts the probabilities of the data.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            The data to predict the probabilities of."""
         with torch.no_grad():
             scores = self.clf(x, probabilistic=False)
             return torch.sigmoid(scores)
         
     def calculate_prop_scores(self, trainloader):
+        """
+        Calculates the prop scores of the data and set the normalizing factor.
+        
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to calculate the prop scores of.
+        """
         with torch.no_grad():
             prop_scores = []
             s = []
@@ -160,9 +251,21 @@ class PUedeep(nn.Module):
         
         self.normalizing_factor = torch.sum(torch.where(s == 1, 1/prop_scores, 0))
         
-
-
     def fit(self, trainloader, valloader, epochs, lr=1e-3):
+        """
+        Fits the PUedeep model to the data.
+        
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to fit the model to.
+        valloader : torch.utils.data.DataLoader
+            The data to validate the model on.
+        epochs : int
+            The number of epochs to train the model for.
+        lr : float
+            The learning rate of the model.
+        """
         optimizer_e = torch.optim.Adam(self.e.parameters(), lr=lr)
         optimizer_clf = torch.optim.Adam(self.clf.parameters(), lr=lr)
         
@@ -172,11 +275,12 @@ class PUedeep(nn.Module):
             count_positive += torch.sum(labels)
             count += len(labels)
 
-        criterion_e = CustomLoss_e(n_p=count_positive, n_U=count-count_positive, alpha=15)
+        criterion_e = CustomLoss_e(n_p=count_positive, n_U=count-count_positive, alpha=15) #Alpha=15 as recommended in the original paper.
         criterion_clf = CustomLoss_clf(self.pi)
         
         es = EarlyStopping()
 
+        #Fit the e model
         done = False
         for epoch in range(epochs):
             steps = list(enumerate(trainloader))
@@ -185,8 +289,6 @@ class PUedeep(nn.Module):
                 
                 inputs, labels = data[0].to(self.device), data[1].to(self.device)
                 optimizer_e.zero_grad()
-                # print(inputs)
-                # print(inputs.dtype)
                 outputs = self.e(inputs, probabilistic=False)
                 loss = criterion_e(outputs, labels.unsqueeze(1).float())
                 loss.backward()
@@ -218,6 +320,7 @@ class PUedeep(nn.Module):
         
         es = EarlyStopping()
 
+        #Fit the clf model
         done = False
         for epoch in range(epochs):
             steps = list(enumerate(trainloader))

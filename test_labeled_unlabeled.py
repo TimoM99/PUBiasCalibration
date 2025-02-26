@@ -3,7 +3,12 @@ import numpy as np
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
 from src.threshold_optimizer import ThresholdOptimizer
+import matplotlib as mpl
 from matplotlib import pyplot as plt
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 
 nb_labeled = 2000
 nb_unlabeled_positive = 1000
@@ -35,6 +40,6 @@ plt.axvline(x=t, color='green', linestyle='-', label='Threshold over all Z')
 plt.axvline(x=t_unlabeled, color='red', linestyle='-', label='Threshold over unlabeled Z')
 plt.xlabel('Z')
 plt.legend()
-plt.show()
+plt.savefig('labeled_vs_unlabeled_MI.pdf')
 
 

@@ -24,15 +24,45 @@ class SAREM(BaseEstimator):
         self.model = None
 
     def fit(self, X, s):
+        """
+        Fits the threshold model to the data.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The data to fit the model to.
+        s : numpy.ndarray
+            The observed labels of the data.
+        """
         model, _, _ = pu_learn_sar_em(X, s, range(X.shape[1]))
         self.model = model
     
     def predict_proba(self, X):
+        """
+        Predicts the probability of the data being positive.
+        
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The data to predict the probability of.
+        """
         y_pred = self.model.predict_proba(X)
         return np.array(list(zip(1 - y_pred, y_pred)))
 
 class SAREMdeep(nn.Module):
     def __init__(self, clf, dims, device=0) -> None:
+        """
+        Initializes the deep SAREM model.
+        
+        Parameters
+        ----------
+        clf : str
+            The classifier to use. Options are 'lr', 'mlp', 'cnn', 'resnet'.
+        dims : list
+            The dimensions of the data.
+        device : int
+            The device to use for training.
+        """
         super().__init__()
         self.device = "mps" if getattr(torch, 'has_mps', False) else "cuda:{}".format(device) if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
@@ -55,11 +85,33 @@ class SAREMdeep(nn.Module):
         
 
     def predict_proba(self, x):
+        """
+        Predicts the probability of the data being positive.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The data to predict the probability of.
+        """
         with torch.no_grad():
             return self.f(x, probabilistic=True)
     
 
     def initialise_f(self, trainloader, valloader, epochs=100, lr=1e-3):
+        """
+        Initialises the classifier f for the EM algorithm by fitting a balanced model which considers the unlabeled examples as negatives.
+
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to train the model on.
+        valloader : torch.utils.data.DataLoader
+            The data to validate the model on.
+        epochs : int
+            The number of epochs to train the model for.
+        lr : float
+            The learning rate to use for training.
+        """
         proportion_labeled = 0
         for _, labels in trainloader:
             labels = labels.to(self.device)
@@ -113,6 +165,20 @@ class SAREMdeep(nn.Module):
         self.f_frozen = deepcopy(self.f)
 
     def initialise_e(self, trainloader, valloader, epochs=100, lr=1e-3):
+        """
+        The propensity score model is initialized by using the classification model to estimate the probabilities of each unlabeled example being positive.
+        
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to train the model on.
+        valloader : torch.utils.data.DataLoader
+            The data to validate the model on.
+        epochs : int
+            The number of epochs to train the model for.
+        lr : float
+            The learning rate to use for training.
+        """
         es = EarlyStopping()
 
         optimizer = torch.optim.Adam(self.e.parameters(), lr=lr)
@@ -126,7 +192,7 @@ class SAREMdeep(nn.Module):
             for i, data in pbar:
                 inputs, labels = data[0].to(self.device), data[1].to(self.device)
                 
-                # We set the mode of f to evaluation, which is put back to training after the model
+                # We set the mode of f to evaluation, which is put back to training after early stopping with self.train()
                 self.f.eval()
                 with torch.no_grad():
                     f_pred = self.f(inputs, probabilistic=True)
@@ -166,6 +232,20 @@ class SAREMdeep(nn.Module):
 
 
     def fit(self, trainloader, valloader, epochs=100, lr=1e-3):
+        """
+        Fits the SAREM model to the data using EM.
+
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to train the model on.
+        valloader : torch.utils.data.DataLoader
+            The data to validate the model on.
+        epochs : int
+            The number of epochs to train the model for.
+        lr : float
+            The learning rate to use for training.
+        """
         self.initialise_f(trainloader, valloader, epochs, lr)
         self.initialise_e(trainloader, valloader, epochs, lr)
 
@@ -182,6 +262,7 @@ class SAREMdeep(nn.Module):
                 inputs, s = data[0].to(self.device), data[1].to(self.device)
                 optimizer.zero_grad()
 
+                # Expectation step
                 self.eval()
                 with torch.no_grad():
                     f_x = self.f_frozen(inputs, probabilistic=True).squeeze()
@@ -189,6 +270,7 @@ class SAREMdeep(nn.Module):
                     y_hat = s + (1 - s) * f_x * (1 - e_x) / (1 - f_x * e_x)
                 self.train()
 
+                # Maximization step
                 f_loss = torch.mean(criterion(self.f(inputs, probabilistic=False), y_hat.unsqueeze(1)))
                 e_loss = torch.mean(y_hat * criterion(self.e(inputs, probabilistic=False).squeeze(), s.float()))
                 loss = f_loss + e_loss
@@ -197,6 +279,7 @@ class SAREMdeep(nn.Module):
 
                 loss = loss.item()
                 if i == len(steps) - 1:
+                    # Early stopping check
                     self.eval()
                     v_loss = 0
                     with torch.no_grad():
@@ -220,6 +303,6 @@ class SAREMdeep(nn.Module):
                     pbar.set_description(f"EM - Epoch: {epoch}, tloss {loss:}")
             if done == True:
                 break
-            
+            # f_frozen and e_frozen are updated only after the epoch is done, as to not use updated models in the expectation step.
             self.f_frozen = deepcopy(self.f)
             self.e_frozen = deepcopy(self.e)

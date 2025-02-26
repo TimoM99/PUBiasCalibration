@@ -19,20 +19,61 @@ def seed(seed):
 class PUbasic(BaseEstimator):
    
     def __init__(self):
+        """
+        Initializes a fully labeled model.
+        """
         self.clf = LogisticRegression(max_iter=1000)
     def fit(self, X, y):
+        """
+        Fits the fully labeled model to the data.
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The data to fit the model to.
+        y : numpy.ndarray
+            The observed labels of the data.
+        """
         self.clf.fit(X,y)
         return self
 
     def predict(self, X):
+        """
+        Predicts the labels of the data.
+        
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The data to predict the labels of.
+        """
         return self.clf.predict()
         
     def predict_proba(self, Xtest):
+        """
+        Predicts the probabilities of the data.
+        
+        Parameters
+        ----------
+        Xtest : numpy.ndarray
+            The data to predict the probabilities of.
+        """
         return self.clf.predict_proba(Xtest)   
 
 class PUbasicDeep(nn.Module):
    
     def __init__(self, clf, dims=None, device=0) -> None:
+        """
+        Initializes the PUbasicDeep model.
+        
+        Parameters
+        ----------
+        clf : str
+            The type of classifier to use.
+        dims : list
+            The dimensions of the data.
+        device : int
+            The device to use.
+        """
         super().__init__()
         self.device = "mps" if getattr(torch, 'has_mps', False) else "cuda:{}".format(device) if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
@@ -50,10 +91,32 @@ class PUbasicDeep(nn.Module):
             self.clf = Resnet().to(self.device)
 
     def predict_proba(self, x):
+        """
+        Predicts the probabilities of the data.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            The data to predict the probabilities of.
+        """
         return self.clf(x, probabilistic=True)
         
 
     def fit(self, trainloader, valloader, epochs, lr=1e-3):
+        """
+        Fits the model to the data.
+        
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to fit the model to.
+        valloader : torch.utils.data.DataLoader
+            The data to validate the model on.
+        epochs : int
+            The number of epochs to train the model for.
+        lr : float
+            The learning rate of the model.
+        """
         optimizer = torch.optim.Adam(self.clf.parameters(), lr=lr)
         
         criterion = nn.BCEWithLogitsLoss()

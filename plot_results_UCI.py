@@ -2,8 +2,11 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import matplotlib as mpl
+
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 
 method1 = 'pusb' #x-axis
 method2 = 'threshold' #y-axis
@@ -24,8 +27,8 @@ for j, strat in enumerate(['S1', 'S2', 'S3', 'S4']):
             raise ValueError('{} is not supported as a score type'.format(score_type))
         
         
-        res[i, 0] = np.mean(np.loadtxt('results_UCI/results_parallel_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method1, strat, ds.split('.')[0]))[:, index])
-        res[i, 1] = np.mean(np.loadtxt('results_UCI/results_parallel_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method2, strat, ds.split('.')[0]))[:, index])
+        res[i, 0] = np.mean(np.loadtxt('results_UCI/results_used_in_paper_AI_stats/results_parallel_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method1, strat, ds.split('.')[0]))[:, index])
+        res[i, 1] = np.mean(np.loadtxt('results_UCI/results_used_in_paper_AI_stats/results_parallel_method_{}_label_scheme_{}_classifier_logistic_ds_{}.txt'.format(method2, strat, ds.split('.')[0]))[:, index])
 
     w = res[:, 1] > (res[:, 0] + 0.01)
     l = res[:, 1] < (res[:, 0] - 0.01)

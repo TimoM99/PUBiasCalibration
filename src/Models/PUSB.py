@@ -22,27 +22,74 @@ def seed(seed):
 
 class PUSB(BaseEstimator):
     def __init__(self, class_prior, X_test, y_test) -> None:
+        """
+        Initializes the PUSB model.
+        
+        Parameters
+        ----------
+        class_prior : float
+            The class prior of the data.
+        X_test : numpy.ndarray
+            The test data.
+        y_test : numpy.ndarray
+            The test labels.
+        """
         self.pi = class_prior
         self.clf = PU(pi=self.pi)
         self.X_test = X_test
         self.y_test = y_test
 
     def fit(self, X, s):
+        """
+        Fits the PUSB model to the data.
+        
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The data to fit the model to.
+        s : numpy.ndarray
+            The observed labels of the data.
+        """
         self.pu_res, self.x_test_kernel = self.clf.optimize(X, s, self.X_test)
     
     def predict_proba(self, X):
-        # print(self.pi)
+        """
+        Predicts the probabilities of the data.
+        
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The data to predict the probabilities of.
+        """
         prob_y_test = self.clf.test_pred(self.x_test_kernel, self.pu_res, self.y_test, quant=True, pi=self.pi)
         return np.array(list(zip(1 - prob_y_test, prob_y_test)))
 
 
-# This loss function is not entirely deterministic, leading to slightly different results on different runs.
 class PUSBLoss(nn.Module):
+    # This loss function is not entirely deterministic, leading to slightly different results on different runs.
     def __init__(self, class_prior):
+        """
+        Initializes the PUSBLoss function.
+        
+        Parameters
+        ----------
+        class_prior : float
+            The class prior of the data.
+        """
         super().__init__()
         self.pi = class_prior
     
     def forward(self, outputs, targets):
+        """
+        Calculates the loss of the model.
+
+        Parameters
+        ----------
+        outputs : torch.Tensor
+            The outputs of the model.
+        targets : torch.Tensor
+            The targets of the model.
+        """
         positives = targets == 1
         unlabeled = targets == 0
         nb_p = max(1, torch.sum(positives))
@@ -57,6 +104,20 @@ class PUSBLoss(nn.Module):
 class PUSBdeep(nn.Module):
    
     def __init__(self, clf, dims, class_prior, device=0) -> None:
+        """
+        Initializes the PUSBdeep model.
+        
+        Parameters
+        ----------
+        clf : str
+            The classifier to use.
+        dims : int
+            The dimensionality of the data.
+        class_prior : float
+            The class prior of the data.
+        device : int
+            The device to use for training.
+        """
         super().__init__()
         self.device = "mps" if getattr(torch, 'has_mps', False) else "cuda:{}".format(device) if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
@@ -77,13 +138,28 @@ class PUSBdeep(nn.Module):
         self.threshold = None
 
     def predict_proba(self, x):
+        """
+        Predicts the probabilities of the data.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            The data to predict the probabilities of.
+        """
         assert self.threshold != None, 'The model has to be fit before predictions can be made.'
         with torch.no_grad():
             h = self.clf(x, probabilistic=False)
-            # print(h)
             return torch.sigmoid(h - self.threshold)
         
     def set_threshold(self, trainloader):
+        """
+        Sets the threshold for the model using the class prior.
+        
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to set the threshold for.
+        """
         self.eval()
         Z = torch.tensor([], dtype=torch.float32).to(self.device)
         with torch.no_grad():
@@ -98,6 +174,20 @@ class PUSBdeep(nn.Module):
 
 
     def fit(self, trainloader, valloader, epochs=100, lr=1e-3):
+        """
+        Fits the PUSBdeep model to the data.
+        
+        Parameters
+        ----------
+        trainloader : torch.utils.data.DataLoader
+            The data to fit the model to.
+        valloader : torch.utils.data.DataLoader
+            The data to validate the model on.
+        epochs : int
+            The number of epochs to train the model for.
+        lr : float
+            The learning rate of the model.
+        """
         optimizer = torch.optim.Adam(self.clf.parameters(), lr=lr)
         criterion = PUSBLoss(self.class_prior)
         

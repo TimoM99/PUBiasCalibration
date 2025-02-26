@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 
 
 #Set parameters:
@@ -42,7 +44,7 @@ for label_strat in ['S1', 'S2', 'S3', 'S4']:
 
        
         for i, method in enumerate(method_list):
-            file_out = 'results_artificial/results_method_' + method + '_label_scheme_' + label_strat + '_xdistr_' + dist + ".txt"    
+            file_out = 'results_artificial/used_in_paper/results_method_' + method + '_label_scheme_' + label_strat + '_xdistr_' + dist + ".txt"    
             res = np.loadtxt(file_out)
             df[:,i, j]= res[:,index_metric] 
                 
