@@ -14,6 +14,10 @@ wins*
 test*
 speedups*
 split*
+performance_increase.py
 
 build/
+dist/
 **egg-info/
+
+.ipynb_checkpoints/
