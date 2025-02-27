@@ -3,31 +3,34 @@
 Created on Mon Feb  6 08:57:46 2023
 
 @author: teiss
+
+This script runs the experiments on artificial datasets to answer Q3.
 """
 
 import random
-import src.helper_files.km as km
+from PUBiasCalibration.helper_files import km
+# import PUBiasCalibration.helper_files.km as km
 
-import src.Models.PUSB as pusb
-from src.Models.PUSB import PUSB
-import src.Models.LBE as lbe
-from src.Models.LBE import LBE
-import src.Models.PGlin as pgl
-from src.Models.PGlin import PUGerych
-import src.Models.basic as basic
-from src.Models.basic import PUbasic
-import src.Models.SAREM as sarem
-from src.Models.SAREM import SAREM
-import src.Models.threshold as threshold
-from src.Models.PUe import PUe
-import src.Models.PUe as pue
-from src.Models.threshold import PUthreshold
+from PUBiasCalibration.Models import PUSB as pusb
+from PUBiasCalibration.Models.PUSB import PUSB
+import PUBiasCalibration.Models.LBE as lbe
+from PUBiasCalibration.Models.LBE import LBE
+import PUBiasCalibration.Models.PGlin as pgl
+from PUBiasCalibration.Models.PGlin import PUGerych
+import PUBiasCalibration.Models.basic as basic
+from PUBiasCalibration.Models.basic import PUbasic
+import PUBiasCalibration.Models.SAREM as sarem
+from PUBiasCalibration.Models.SAREM import SAREM
+import PUBiasCalibration.Models.threshold as threshold
+from PUBiasCalibration.Models.PUe import PUe
+import PUBiasCalibration.Models.PUe as pue
+from PUBiasCalibration.Models.threshold import PUthreshold
 from artificial import generate_artificial_data_gen
 
 
 import numpy as np
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, auc, roc_curve, precision_recall_curve
-from src.helper_files.utils import sigmoid
+from PUBiasCalibration.helper_files.utils import sigmoid
 
 #Set parameters:
 p=10 # number of features

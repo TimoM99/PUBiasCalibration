@@ -1,16 +1,21 @@
+"""
+This script runs the experiments for Q4.
+"""
+
+
 import time
 import pandas as pd
 import numpy as np
 
-from src.helper_files.utils import make_binary_class, sigmoid
+from PUBiasCalibration.helper_files.utils import make_binary_class, sigmoid
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import balanced_accuracy_score
-import src.threshold_optimizer as threshold_optimizer
-from src.threshold_optimizer import ThresholdOptimizer
+import PUBiasCalibration.threshold_optimizer as threshold_optimizer
+from PUBiasCalibration.threshold_optimizer import ThresholdOptimizer
 from tqdm import tqdm
-import src.helper_files.km as km
-from src.helper_files.km import km_default
+import PUBiasCalibration.helper_files.km as km
+from PUBiasCalibration.helper_files.km import km_default
 from multiprocessing import Pool
 
 # We try to find the optimal threshold that maximizes the balanced accuracy

@@ -1,3 +1,11 @@
+"""
+This script runs the experiments for Q1/2.
+
+By running experiment_nn, the script will run the experiments for the neural network classifiers on image datasets (Q2).
+
+experiment_lr can be used to run the experiments for the logistic regression classifier on UCI datasets (Q1). However, the script experiment_multi, parallelizes this and might be preferred.
+"""
+
 import os
 # Not all pytorch functions work on mps, so we set the fallback to cpu
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
@@ -6,26 +14,26 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 import torch
 import time
-import src.helper_files.km as km
+import PUBiasCalibration.helper_files.km as km
 import pandas as pd
 
 from torchvision import transforms, datasets
-import src.Models.PUSB as pusb
-from src.Models.PUSB import PUSB, PUSBdeep
-import src.Models.LBE as lbe
-from src.Models.LBE import LBEdeep, LBE
-import src.Models.PGlin as pgl
-from src.Models.PGlin import PUGerychDeep, PUGerych
-from src.helper_files.utils import CustomDataset, label_transform_MNIST, label_transform_CIFAR10, label_transform_USPS, label_transform_Fashion, label_transform_Alzheimer, make_binary_class, sigmoid
+import PUBiasCalibration.Models.PUSB as pusb
+from PUBiasCalibration.Models.PUSB import PUSB, PUSBdeep
+import PUBiasCalibration.Models.LBE as lbe
+from PUBiasCalibration.Models.LBE import LBEdeep, LBE
+import PUBiasCalibration.Models.PGlin as pgl
+from PUBiasCalibration.Models.PGlin import PUGerychDeep, PUGerych
+from PUBiasCalibration.helper_files.utils import CustomDataset, label_transform_MNIST, label_transform_CIFAR10, label_transform_USPS, label_transform_Fashion, label_transform_Alzheimer, make_binary_class, sigmoid
 from torchvision.datasets import MNIST, CIFAR10, USPS, FashionMNIST
-import src.Models.basic as basic
-from src.Models.basic import PUbasicDeep, PUbasic
-import src.Models.SAREM as sarem
-from src.Models.SAREM import SAREMdeep, SAREM
-import src.Models.threshold as threshold
-from src.Models.threshold import PUthresholddeep, PUthreshold
-from src.Models.PUe import PUedeep, PUe
-import src.Models.PUe as pue
+import PUBiasCalibration.Models.basic as basic
+from PUBiasCalibration.Models.basic import PUbasicDeep, PUbasic
+import PUBiasCalibration.Models.SAREM as sarem
+from PUBiasCalibration.Models.SAREM import SAREMdeep, SAREM
+import PUBiasCalibration.Models.threshold as threshold
+from PUBiasCalibration.Models.threshold import PUthresholddeep, PUthreshold
+from PUBiasCalibration.Models.PUe import PUedeep, PUe
+import PUBiasCalibration.Models.PUe as pue
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, precision_score, recall_score, roc_curve, auc, precision_recall_curve
 from PIL import Image

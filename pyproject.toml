@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PUBiasCalibration"
+version = "0.1"
+authors = [
+{name="Timo Martens"},
+{name="Pawel Teisseyre"},
+{name="Jessa Bekker"},
+]
+description= "Learning from biased positive-unlabeled data via threshold calibration"
+readme = "README.md"
+dependencies = [
+"bitarray==2.8.1",
+"chainer==7.8.1",
+"cvxopt==1.2.6",
+"mkl_service==2.4.0",
+"numpy==1.24.3",
+"pandas==1.5.3",
+"scikit_learn==1.2.2",
+"scipy==1.10.0",
+"sympy==1.11.1",
+"torch==2.0.0",
+"torchvision==0.15.0",
+"tqdm==4.65.0"]

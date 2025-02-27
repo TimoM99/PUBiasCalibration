@@ -5,7 +5,7 @@ Created on Thu Apr 20 20:31:36 2023
 @author: teiss
 """
 import numpy as np
-from src.helper_files.utils import sigmoid
+from PUBiasCalibration.helper_files.utils import sigmoid
 from sklearn.preprocessing import scale
 
 def generate_artificial_data_discr(prior=0.5,n=2000,p=10,xdistr="norm"): 
