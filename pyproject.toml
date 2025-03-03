@@ -15,8 +15,7 @@ readme = "README.md"
 dependencies = [
 "bitarray==2.8.1",
 "chainer==7.8.1",
-"cvxopt==1.2.6",
-"mkl_service==2.4.0",
+"cvxopt>=1.2.6",
 "numpy==1.24.3",
 "pandas==1.5.3",
 "scikit_learn==1.2.2",
