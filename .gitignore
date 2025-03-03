@@ -8,10 +8,9 @@
 .DS_Store
 *.pdf
 
-plot*
+plot_*
 table*
 wins*
-test*
 speedups*
 split*
 performance_increase.py
