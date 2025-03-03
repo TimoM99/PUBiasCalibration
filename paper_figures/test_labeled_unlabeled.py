@@ -2,7 +2,7 @@
 import numpy as np
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
-from src.threshold_optimizer import ThresholdOptimizer
+from PUBiasCalibration.threshold_optimizer import ThresholdOptimizer
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 mpl.rcParams['text.usetex'] = True
