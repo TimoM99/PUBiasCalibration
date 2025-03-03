@@ -500,6 +500,10 @@ if __name__ == "__main__":
     for strat in ['S1', 'S2', 'S3', 'S4']:
         args.strat = strat
         if args.clf == 'nn':
+            if 'results_image' not in os.listdir():
+                os.mkdir('results_image')
             experiment_nn(args)
         elif args.clf == 'lr':
+            if 'results_UCI' not in os.listdir():
+                os.mkdir('results_UCI')
             experiment_lr(args)

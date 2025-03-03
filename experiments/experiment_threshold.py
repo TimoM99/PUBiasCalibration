@@ -6,6 +6,7 @@ This script runs the experiments for Q4.
 import time
 import pandas as pd
 import numpy as np
+import os
 
 from PUBiasCalibration.helper_files.utils import make_binary_class, sigmoid
 from sklearn.model_selection import train_test_split
@@ -139,6 +140,9 @@ def threshold_experiment(ds):
 
 
 if __name__ == '__main__':
+    if 'results_threshold' not in os.listdir():
+        os.mkdir('results_threshold')
+
     datasets = ['Breast-w','Diabetes','Kc1','Spambase','Wdbc','Banknote-authentication',
                 'Heart-statlog','Jm1','Ionosphere','Sonar','Haberman','Segment','Waveform-5000','Yeast','Musk','Abalone','Isolet','Madelon','Semeion','Vehicle']
     pool = Pool(processes=20)

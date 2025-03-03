@@ -1,5 +1,7 @@
 """
 This script runs the experiments for Q1 and can be used for timing results as it parallelizes everything and trains every model isolated on one core.
+
+Note: it requires the installation of mkl-service through Conda.
 """
 
 from functools import partial
@@ -12,6 +14,7 @@ import PUBiasCalibration.helper_files.km as km
 import pandas as pd
 import multiprocessing
 import mkl
+import os
 
 import PUBiasCalibration.Models.PUSB as pusb
 from PUBiasCalibration.Models.PUSB import PUSB
@@ -153,6 +156,10 @@ def experiment_lr(ds, nsym, strat):
 if __name__ == "__main__":
     # Lock every process to one thread to get accurate training times.
     mkl.set_num_threads(1)
+
+    if 'results_UCI' not in os.listdir():
+        os.mkdir('results_UCI')
+
     warnings.filterwarnings("ignore")
     for strat in ['S1', 'S2', 'S3', 'S4']:
         datasets = ['Breast-w','Diabetes','Kc1','Spambase','Wdbc','Banknote-authentication',

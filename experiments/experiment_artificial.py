@@ -27,7 +27,7 @@ import PUBiasCalibration.Models.PUe as pue
 from PUBiasCalibration.Models.threshold import PUthreshold
 from artificial import generate_artificial_data_gen
 
-
+import os
 import numpy as np
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, auc, roc_curve, precision_recall_curve
 from PUBiasCalibration.helper_files.utils import sigmoid
@@ -39,6 +39,9 @@ n=2000 # number of samples
 nsym = 20
 method_list = ['PUe', 'pusb', 'sar-em', 'lbe', 'pglin', 'threshold', 'oracle']
 label_strats = ['S1', 'S2', 'S3', 'S4']
+
+if 'results_artificial' not in os.listdir():
+    os.mkdir('results_artificial')
 
 for label_strat in label_strats:
     for xdistr in ['norm','unif','lognorm']:
